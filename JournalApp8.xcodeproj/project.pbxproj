@@ -16,6 +16,21 @@
 			path = JournalApp8;
 			sourceTree = "<group>";
 		};
+		10173FAD2EA7B596007F1258 /* view */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = view;
+			sourceTree = "<group>";
+		};
+		10173FAE2EA7B5A4007F1258 /* model */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = model;
+			sourceTree = "<group>";
+		};
+		10173FAF2EA7B5B0007F1258 /* viewmodel */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = viewmodel;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +47,9 @@
 		10173F962EA7B579007F1258 = {
 			isa = PBXGroup;
 			children = (
+				10173FAF2EA7B5B0007F1258 /* viewmodel */,
+				10173FAE2EA7B5A4007F1258 /* model */,
+				10173FAD2EA7B596007F1258 /* view */,
 				10173FA12EA7B579007F1258 /* JournalApp8 */,
 				10173FA02EA7B579007F1258 /* Products */,
 			);
@@ -62,6 +80,9 @@
 			);
 			fileSystemSynchronizedGroups = (
 				10173FA12EA7B579007F1258 /* JournalApp8 */,
+				10173FAD2EA7B596007F1258 /* view */,
+				10173FAE2EA7B5A4007F1258 /* model */,
+				10173FAF2EA7B5B0007F1258 /* viewmodel */,
 			);
 			name = JournalApp8;
 			packageProductDependencies = (
