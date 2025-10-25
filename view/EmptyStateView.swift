@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct EmptyStateScreen: View {
-    // MARK: - Simple Model
+    // Model
     struct JournalEntry: Identifiable, Equatable {
         let id = UUID()
         var title: String
@@ -10,24 +10,25 @@ struct EmptyStateScreen: View {
         var isBookmarked: Bool = false
     }
 
-    // MARK: - State
+    // State
     @State private var journals: [JournalEntry] = []
     @State private var searchText = ""
     @State private var showEditor = false
-    @State private var editingIndex: Int? = nil
     @State private var draftTitle = ""
     @State private var draftContent = ""
-
-    enum FilterMode: String { case all = "All", bookmarked = "Bookmarked", newest = "Newest First" }
+    @State private var editingIndex: Int? = nil
     @State private var filterMode: FilterMode = .all
 
-    // MARK: - Filtered List
+    enum FilterMode { case all, bookmarked, newest }
+
+    private let lavender = Color(red: 0.76, green: 0.73, blue: 0.98)
+
     private var filteredJournals: [JournalEntry] {
         var items = journals
         switch filterMode {
+        case .all: break
         case .bookmarked: items = items.filter { $0.isBookmarked }
         case .newest: items = items.sorted { $0.date > $1.date }
-        case .all: break
         }
         if !searchText.isEmpty {
             items = items.filter {
@@ -38,103 +39,124 @@ struct EmptyStateScreen: View {
         return items
     }
 
-    // MARK: - UI
     var body: some View {
-        NavigationView {
+        ZStack(alignment: .bottom) {
             VStack(spacing: 16) {
-                if journals.isEmpty {
+                HStack {
+                    Text("Journal")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                    Spacer()
+                    HStack(spacing: 12) {
+                        Menu {
+                           
+                            Button("sort by bookmark")   { filterMode = .bookmarked }
+                            Button("sort by entry date") { filterMode = .newest }
+                        } label: {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                        }
+                        Button { startAdding() } label: {
+                            Image(systemName: "plus")
+                        }
+                    }
+                    .font(.title3)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                }
+                .padding(.horizontal)
+
+                if filteredJournals.isEmpty {
                     Spacer()
                     Image("emptybook")
-                        .resizable()
-                        .scaledToFit()
+                        .resizable().scaledToFit()
                         .frame(width: 180, height: 100)
-                    Text("Begin Your Journal")
-                        .font(.title3).bold()
+                    Text("Begin Your Journal").font(.title3).bold()
                     Text("Tap the + to start writing your first entry.")
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                     Spacer()
                 } else {
-                    List {
-                        ForEach(filteredJournals) { entry in
-                            Button { startEditing(entry) } label: {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text(entry.title).font(.headline)
-                                        if entry.isBookmarked {
-                                            Image(systemName: "bookmark.fill")
-                                                .foregroundColor(.purple)
+                    ScrollView {
+                        VStack(spacing: 18) {
+                            ForEach(filteredJournals) { entry in
+                                journalCard(entry)
+                                    .onTapGesture { startEditing(entry) }
+                                    .contextMenu {
+                                        Button(entry.isBookmarked ? "Remove Bookmark" : "Bookmark") {
+                                            toggleBookmark(entry)
+                                        }
+                                        Button("Delete", role: .destructive) {
+                                            delete(entry)
                                         }
                                     }
-                                    Text(entry.date.formatted(date: .abbreviated, time: .omitted))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(entry.content)
-                                        .lineLimit(2)
-                                        .foregroundColor(.primary.opacity(0.8))
-                                }
-                            }
-                            .swipeActions {
-                                Button(role: .destructive) { delete(entry) } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                Button { toggleBookmark(entry) } label: {
-                                    Label("Bookmark", systemImage: entry.isBookmarked ? "bookmark.slash" : "bookmark")
-                                }.tint(.purple)
                             }
                         }
-                    }.listStyle(.plain)
+                        .padding(.horizontal)
+                        .padding(.bottom, 80)
+                    }
                 }
+            }
 
-                // Search Bar
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-                    TextField("Search", text: $searchText)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
-                    Image(systemName: "mic.fill").foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 12)
-                .frame(height: 44)
-                .background(RoundedRectangle(cornerRadius: 70).fill(Color.gray.opacity(0.2)))
-                .padding(.horizontal)
-                .padding(.bottom, 4)
+            // Floating search
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                TextField("Search", text: $searchText)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .submitLabel(.search)
+                Image(systemName: "mic.fill").foregroundColor(.secondary)
             }
-            .navigationTitle("Journal")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Picker("Filter", selection: $filterMode) {
-                            Text("All").tag(FilterMode.all)
-                            Text("Bookmarked").tag(FilterMode.bookmarked)
-                            Text("Newest First").tag(FilterMode.newest)
-                        }
-                    } label: {
-                        Label("Sort", systemImage: "line.3.horizontal.decrease.circle")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { startAdding() } label: {
-                        Image(systemName: "plus.circle.fill").font(.title2)
-                    }
-                }
-            }
-            .sheet(isPresented: $showEditor) {
-                EmptyStateScreenSheet(
-                    title: $draftTitle,
-                    content: $draftContent,
-                    onCancel: { showEditor = false },
-                    onSave: { saveDraft(); showEditor = false }
-                )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-                .preferredColorScheme(.dark)
-            }
+            .padding(.horizontal, 14)
+            .frame(height: 44)
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
+            .shadow(radius: 6, y: 2)
+            .padding(.horizontal)
+            .padding(.bottom, 16)
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $showEditor) {
+            FancyJournalSheet(
+                title: $draftTitle,
+                content: $draftContent,
+                onCancel: { showEditor = false },
+                onSave:  { saveDraft(); showEditor = false }
+            )
+            .preferredColorScheme(.dark)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
+        }
     }
 
-    // MARK: - Actions
+    private func journalCard(_ entry: JournalEntry) -> some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 22)
+                .fill(Color(.secondarySystemBackground).opacity(0.35))
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    Text(entry.title)
+                        .foregroundColor(lavender)
+                        .font(.system(size: 22, weight: .semibold))
+                        .lineLimit(1)
+                    Spacer()
+                    Image(systemName: entry.isBookmarked ? "bookmark.fill" : "bookmark")
+                        .foregroundColor(lavender)
+                        .onTapGesture { toggleBookmark(entry) }
+                }
+                Text(entry.date.formatted(date: .numeric, time: .omitted))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(entry.content)
+                    .foregroundColor(.primary.opacity(0.92))
+                  
+            }
+            .padding(18)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func startAdding() {
         editingIndex = nil
         draftTitle = ""
@@ -143,126 +165,42 @@ struct EmptyStateScreen: View {
     }
 
     private func startEditing(_ entry: JournalEntry) {
-        if let idx = journals.firstIndex(of: entry) {
-            editingIndex = idx
-            draftTitle = journals[idx].title
-            draftContent = journals[idx].content
+        if let i = journals.firstIndex(of: entry) {
+            editingIndex = i
+            draftTitle = journals[i].title
+            draftContent = journals[i].content
             showEditor = true
         }
     }
 
     private func saveDraft() {
-        let title = draftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let body  = draftContent.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty || !body.isEmpty else { return }
+        let t = draftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let c = draftContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty || !c.isEmpty else { return }
 
-        if let idx = editingIndex {
-            journals[idx].title = title.isEmpty ? "Untitled" : title
-            journals[idx].content = body
-            journals[idx].date = .now
+        if let i = editingIndex {
+            journals[i].title = t.isEmpty ? "Untitled" : t
+            journals[i].content = c
+            journals[i].date = .now
         } else {
-            journals.insert(.init(title: title.isEmpty ? "Untitled" : title,
-                                  content: body,
-                                  date: .now), at: 0)
+            journals.insert(.init(title: t.isEmpty ? "Untitled" : t, content: c, date: .now), at: 0)
         }
     }
 
     private func delete(_ entry: JournalEntry) {
-        if let idx = journals.firstIndex(of: entry) {
-            journals.remove(at: idx)
+        if let i = journals.firstIndex(of: entry) {
+            journals.remove(at: i)
         }
     }
 
     private func toggleBookmark(_ entry: JournalEntry) {
-        if let idx = journals.firstIndex(of: entry) {
-            journals[idx].isBookmarked.toggle()
+        if let i = journals.firstIndex(of: entry) {
+            journals[i].isBookmarked.toggle()
         }
     }
 }
 
-// MARK: - New Journal Sheet
-struct EmptyStateScreenSheet: View {
-    @Binding var title: String
-    @Binding var content: String
-    var onCancel: () -> Void
-    var onSave: () -> Void
-
-    @FocusState private var focusField: Field?
-    enum Field { case title, body }
-    private let purple = Color(#colorLiteral(red: 0.58, green: 0.58, blue: 0.99, alpha: 1))
-
-    var body: some View {
-        ZStack(alignment: .top) {
-            Color(.systemGray6).opacity(0.12).ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(spacing: 10) {
-                    Capsule().frame(width: 60, height: 5)
-                        .foregroundStyle(.secondary).opacity(0.6)
-                    HStack {
-                        Button(action: onCancel) {
-                            ZStack {
-                                Circle().fill(Color.black.opacity(0.35)).frame(width: 40, height: 40)
-                                Image(systemName: "xmark").font(.system(size: 16, weight: .bold))
-                            }
-                        }
-                        Spacer()
-                        Button(action: onSave) {
-                            ZStack {
-                                Circle().fill(purple).frame(width: 40, height: 40)
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundStyle(.black.opacity(0.9))
-                            }
-                        }
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                  && content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .opacity((title.isEmpty && content.isEmpty) ? 0.5 : 1)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-
-                HStack(alignment: .top, spacing: 10) {
-                    Rectangle().fill(purple)
-                        .frame(width: 3, height: 34)
-                        .cornerRadius(1.5)
-                    TextField("Title", text: $title)
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .focused($focusField, equals: .title)
-                        .textInputAutocapitalization(.sentences)
-                        .submitLabel(.next)
-                        .onSubmit { focusField = .body }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
-
-                Text(Date.now.formatted(date: .numeric, time: .omitted))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
-
-                ZStack(alignment: .topLeading) {
-                    TextEditor(text: $content)
-                        .focused($focusField, equals: .body)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 12)
-                    if content.isEmpty {
-                        Text("Type your Journal...")
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 18)
-                            .padding(.top, 16)
-                    }
-                }
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.black.opacity(0.18))
-                )
-                .padding(.horizontal, 12)
-                Spacer(minLength: 0)
-            }
-        }
+#Preview {
+    EmptyStateScreen()
         .preferredColorScheme(.dark)
-        .onAppear { focusField = title.isEmpty ? .title : .body }
-    }
 }
-
-#Preview { EmptyStateScreen() }
