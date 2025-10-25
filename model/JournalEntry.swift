@@ -6,10 +6,10 @@
 //
 import Foundation
 
-struct JournalEntry: Identifiable {
+struct JournalEntry: Identifiable, Equatable {
     let id = UUID()
     var title: String
     var content: String
-    var date: Date
+    var date: Date = .now
     var isBookmarked: Bool = false
 }

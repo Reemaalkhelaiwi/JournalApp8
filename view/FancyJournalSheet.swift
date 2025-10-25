@@ -9,12 +9,15 @@ struct FancyJournalSheet: View {
     @FocusState private var focus: Field?
     private enum Field { case title, body }
 
-    // ONE shade used everywhere
-    // ONE shade used everywhere
+    // 🔹 Minimal additions
+    @State private var startTitle = ""          // snapshot on appear
+    @State private var startContent = ""
+    @State private var showDiscard = false      // alert trigger
+
     private let purple = Color(red: 0.58, green: 0.58, blue: 0.99)
-    private let sheetGray = Color(red: 0.12, green: 0.12, blue: 0.12) // neutral custom gray
-    private let opacity: Double = 1.0
-    
+    private let sheetGray = Color(.systemGray6)
+    private let opacity: Double = 0.40
+
     var body: some View {
         ZStack(alignment: .top) {
             sheetGray.opacity(opacity).ignoresSafeArea()
@@ -22,19 +25,34 @@ struct FancyJournalSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 // Handle + controls
                 VStack(spacing: 10) {
-                    Capsule()
-                        .frame(width: 45, height: 5)
+                    Capsule().frame(width: 45, height: 5)
                         .foregroundStyle(.secondary).opacity(0.6)
 
                     HStack {
-                        circleButton(system: "xmark",
-                                     fill: Color.black.opacity(0.35),
-                                     action: onCancel)
+                        // ❌ Close (ask to discard only if changed)
+                        Button {
+                            if isUnchanged { onCancel() } else { showDiscard = true }
+                        } label: {
+                            ZStack {
+                                Circle().fill(Color.black.opacity(0.35))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 16, weight: .bold))
+                            }
+                        }
+
                         Spacer()
-                        circleButton(system: "checkmark",
-                                     fill: purple,
-                                     fg: .black.opacity(0.9),
-                                     action: onSave)
+
+                        // ✓ Save
+                        Button(action: onSave) {
+                            ZStack {
+                                Circle().fill(purple)
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundStyle(.black.opacity(0.9))
+                            }
+                        }
                         .disabled(isEmpty)
                         .opacity(isEmpty ? 0.5 : 1)
                     }
@@ -42,12 +60,9 @@ struct FancyJournalSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
-                // Title with accent
+                // Title with purple accent
                 HStack(alignment: .top, spacing: 10) {
-                    Rectangle().fill(purple)
-                        .frame(width: 3, height: 34)
-                        .cornerRadius(1.5)
-
+                    Rectangle().fill(purple).frame(width: 3, height: 34).cornerRadius(1.5)
                     TextField("Title", text: $title)
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .focused($focus, equals: .title)
@@ -62,57 +77,60 @@ struct FancyJournalSheet: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 16)
 
-                // Body (single gray, same as sheet)
+                // Body with placeholder
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $content)
                         .focused($focus, equals: .body)
-                        .scrollContentBackground(.hidden)        // remove default dark layer
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(sheetGray.opacity(opacity))  // EXACT same shade
-                        )
+                        .scrollContentBackground(.hidden)
+                        .background(sheetGray.opacity(opacity))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
 
                     if content.isEmpty {
                         Text("Type your Journal...")
                             .foregroundColor(.secondary)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 22)
                             .padding(.top, 18)
                     }
                 }
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(sheetGray.opacity(opacity))
+                )
                 .padding(.horizontal, 12)
 
                 Spacer(minLength: 0)
             }
         }
-        .onAppear { focus = title.isEmpty ? .title : .body }
-        .preferredColorScheme(.dark)
+        .alert("Are you sure you want to discard changes on this journal?",
+               isPresented: $showDiscard) {
+            Button("Discard Changes", role: .destructive) { onCancel() }
+            Button("Keep Editing", role: .cancel) {}
+        }
+        .onAppear {
+            // snapshot starting values (so parent doesn’t need to pass anything)
+            startTitle = title
+            startContent = content
+            focus = title.isEmpty ? .title : .body
+        }
     }
 
+    // Helpers (unchanged)
     private var isEmpty: Bool {
         title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-
-    private func circleButton(system: String,
-                              fill: Color,
-                              fg: Color = .primary,
-                              action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            ZStack {
-                Circle().fill(fill).frame(width: 40, height: 40)
-                Image(systemName: system)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(fg)
-            }
-        }
+    private var isUnchanged: Bool {
+        title.trimmingCharacters(in: .whitespacesAndNewlines) == startTitle.trimmingCharacters(in: .whitespacesAndNewlines) &&
+        content.trimmingCharacters(in: .whitespacesAndNewlines) == startContent.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
-
 #Preview {
-    FancyJournalSheet(title: .constant(""),
-                      content: .constant(""),
-                      onCancel: {},
-                      onSave: {})
-        .preferredColorScheme(.dark)
+    FancyJournalSheet(
+        title: .constant("Test Title"),
+        content: .constant("Some journal text..."),
+        onCancel: {},
+        onSave: {}
+    )
+    .preferredColorScheme(.dark)
 }
