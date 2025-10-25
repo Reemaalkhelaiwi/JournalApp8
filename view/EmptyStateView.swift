@@ -1,51 +1,29 @@
 import SwiftUI
 
 struct EmptyStateScreen: View {
-    // MARK: State
-    @State private var journals: [JournalEntry] = []
-    @State private var searchText = ""
+    @StateObject private var vm = JournalViewModel()
+
     @State private var showEditor = false
     @State private var draftTitle = ""
     @State private var draftContent = ""
     @State private var editingIndex: Int? = nil
-    @State private var filter: Filter = .all
 
-    // delete confirmation
     @State private var pendingDelete: JournalEntry? = nil
     @State private var showDeleteAlert = false
 
-    enum Filter { case all, bookmarked, newest }
-
-    // MARK: Style
     private let lavender = Color(red: 0.76, green: 0.73, blue: 0.98)
-    private let surface  = Color(red: 0.12, green: 0.12, blue: 0.12) // same gray everywhere
+    private let surface  = Color(red: 0.12, green: 0.12, blue: 0.12)
 
-    // MARK: Derived
-    private var items: [JournalEntry] {
-        var r = journals
-        if filter == .bookmarked { r = r.filter { $0.isBookmarked } }
-        if filter == .newest     { r = r.sorted { $0.date > $1.date } }
-        if !searchText.isEmpty {
-            r = r.filter {
-                $0.title.localizedCaseInsensitiveContains(searchText) ||
-                $0.content.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-        return r
-    }
-
-    // MARK: View
     var body: some View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 16) {
                 header
 
-                if items.isEmpty {
+                if vm.items.isEmpty {
                     emptyView
                 } else {
-                    // Use List so swipeActions work, but keep the card look
                     List {
-                        ForEach(items) { entry in
+                        ForEach(vm.items) { entry in
                             card(for: entry)
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
@@ -59,7 +37,7 @@ struct EmptyStateScreen: View {
                                 }
                                 .swipeActions(edge: .leading) {
                                     Button {
-                                        toggleBookmark(entry)
+                                        vm.toggleBookmark(entry)
                                     } label: {
                                         Label(entry.isBookmarked ? "Unbookmark" : "Bookmark",
                                               systemImage: entry.isBookmarked ? "bookmark.slash" : "bookmark")
@@ -70,29 +48,28 @@ struct EmptyStateScreen: View {
                         }
                     }
                     .listStyle(.plain)
-                    .animation(.default, value: journals)
-                    .padding(.horizontal, 4) // tiny inset to match your spacing
-                    .padding(.bottom, 60)    // room for the floating search
+                    .animation(.default, value: vm.journals)
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 60)
                 }
             }
 
             searchBar
         }
         .preferredColorScheme(.dark)
-        // Delete confirmation alert
         .alert("Delete Journal?", isPresented: $showDeleteAlert, presenting: pendingDelete) { entry in
             Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) { delete(entry) }
+            Button("Delete", role: .destructive) { vm.delete(entry) }
         } message: { _ in
             Text("Are you sure you want to delete this journal?")
         }
-        // Editor sheet (your fancy sheet)
         .sheet(isPresented: $showEditor) {
             FancyJournalSheet(
                 title: $draftTitle,
                 content: $draftContent,
                 onCancel: { showEditor = false },
-                onSave:  { saveDraft(); showEditor = false }
+                onSave:  { vm.upsert(editingIndex: editingIndex, title: draftTitle, content: draftContent)
+                           showEditor = false }
             )
             .preferredColorScheme(.dark)
             .presentationDetents([.large])
@@ -100,7 +77,6 @@ struct EmptyStateScreen: View {
         }
     }
 
-    // MARK: Pieces
     private var header: some View {
         HStack {
             Text("Journal")
@@ -108,8 +84,8 @@ struct EmptyStateScreen: View {
             Spacer()
             HStack(spacing: 12) {
                 Menu {
-                    Button("sort by bookmark")   { filter = .bookmarked }
-                    Button("sort by entry date") { filter = .newest }
+                    Button("sort by bookmark")   { vm.filter = .bookmarked }
+                    Button("sort by entry date") { vm.filter = .newest }
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                 }
@@ -151,7 +127,7 @@ struct EmptyStateScreen: View {
                     Spacer()
                     Image(systemName: e.isBookmarked ? "bookmark.fill" : "bookmark")
                         .foregroundColor(lavender)
-                        .onTapGesture { toggleBookmark(e) }
+                        .onTapGesture { vm.toggleBookmark(e) }
                 }
                 Text(e.date.formatted(date: .numeric, time: .omitted))
                     .font(.caption).foregroundColor(.secondary)
@@ -160,13 +136,13 @@ struct EmptyStateScreen: View {
             .padding(18)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle()) // makes the whole card tappable / swipable
+        .contentShape(Rectangle())
     }
 
     private var searchBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-            TextField("Search", text: $searchText)
+            TextField("Search", text: $vm.searchText)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
                 .submitLabel(.search)
@@ -180,7 +156,6 @@ struct EmptyStateScreen: View {
         .padding(.bottom, 16)
     }
 
-    // MARK: Actions
     private func beginAdd() {
         editingIndex = nil
         draftTitle = ""
@@ -189,37 +164,15 @@ struct EmptyStateScreen: View {
     }
 
     private func beginEdit(_ e: JournalEntry) {
-        if let i = journals.firstIndex(of: e) {
+        if let i = vm.journals.firstIndex(of: e) {
             editingIndex = i
-            draftTitle = journals[i].title
-            draftContent = journals[i].content
+            draftTitle = vm.journals[i].title
+            draftContent = vm.journals[i].content
             showEditor = true
         }
     }
-
-    private func saveDraft() {
-        let t = draftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let c = draftContent.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty || !c.isEmpty else { return }
-
-        if let i = editingIndex {
-            journals[i].title = t.isEmpty ? "Untitled" : t
-            journals[i].content = c
-            journals[i].date = .now
-        } else {
-            journals.insert(.init(title: t.isEmpty ? "Untitled" : t, content: c, date: .now), at: 0)
-        }
-    }
-
-    private func delete(_ e: JournalEntry) {
-        if let i = journals.firstIndex(of: e) { journals.remove(at: i) }
-    }
-
-    private func toggleBookmark(_ e: JournalEntry) {
-        if let i = journals.firstIndex(of: e) { journals[i].isBookmarked.toggle() }
-    }
 }
-
 #Preview {
-    EmptyStateScreen().preferredColorScheme(.dark)
+    EmptyStateScreen()
+        .preferredColorScheme(.dark)
 }

@@ -1,17 +1,25 @@
-//
-//  JournalApp8App.swift
-//  JournalApp8
-//
-//  Created by Reema Alkhelaiwi on 21/10/2025.
-//
-
 import SwiftUI
 
 @main
 struct JournalApp8App: App {
+    @State private var showSplash = true
+
     var body: some Scene {
         WindowGroup {
-            EmptyStateScreen ()
+            Group {
+                if showSplash {
+                    SplashScreen()
+                        .preferredColorScheme(.dark) // force dark mode for splash
+                } else {
+                    MainPageView()
+                        .preferredColorScheme(.dark)
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    showSplash = false
+                }
+            }
         }
     }
 }

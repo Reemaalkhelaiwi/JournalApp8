@@ -9,10 +9,9 @@ struct FancyJournalSheet: View {
     @FocusState private var focus: Field?
     private enum Field { case title, body }
 
-    // 🔹 Minimal additions
-    @State private var startTitle = ""          // snapshot on appear
+    @State private var startTitle = ""
     @State private var startContent = ""
-    @State private var showDiscard = false      // alert trigger
+    @State private var showDiscard = false
 
     private let purple = Color(red: 0.58, green: 0.58, blue: 0.99)
     private let sheetGray = Color(.systemGray6)
@@ -23,13 +22,11 @@ struct FancyJournalSheet: View {
             sheetGray.opacity(opacity).ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 10) {
-                // Handle + controls
                 VStack(spacing: 10) {
                     Capsule().frame(width: 45, height: 5)
                         .foregroundStyle(.secondary).opacity(0.6)
 
                     HStack {
-                        // ❌ Close (ask to discard only if changed)
                         Button {
                             if isUnchanged { onCancel() } else { showDiscard = true }
                         } label: {
@@ -43,7 +40,6 @@ struct FancyJournalSheet: View {
 
                         Spacer()
 
-                        // ✓ Save
                         Button(action: onSave) {
                             ZStack {
                                 Circle().fill(purple)
@@ -60,7 +56,6 @@ struct FancyJournalSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
 
-                // Title with purple accent
                 HStack(alignment: .top, spacing: 10) {
                     Rectangle().fill(purple).frame(width: 3, height: 34).cornerRadius(1.5)
                     TextField("Title", text: $title)
@@ -77,7 +72,6 @@ struct FancyJournalSheet: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 16)
 
-                // Body with placeholder
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $content)
                         .focused($focus, equals: .body)
@@ -108,14 +102,12 @@ struct FancyJournalSheet: View {
             Button("Keep Editing", role: .cancel) {}
         }
         .onAppear {
-            // snapshot starting values (so parent doesn’t need to pass anything)
             startTitle = title
             startContent = content
             focus = title.isEmpty ? .title : .body
         }
     }
 
-    // Helpers (unchanged)
     private var isEmpty: Bool {
         title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -125,6 +117,7 @@ struct FancyJournalSheet: View {
         content.trimmingCharacters(in: .whitespacesAndNewlines) == startContent.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
+
 #Preview {
     FancyJournalSheet(
         title: .constant("Test Title"),
