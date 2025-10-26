@@ -9,10 +9,12 @@ struct JournalApp8App: App {
             Group {
                 if showSplash {
                     SplashScreen()
-                        .preferredColorScheme(.dark) // force dark mode for splash
+                        .preferredColorScheme(.dark)
+                        .buttonStyle(.glass)// force dark mode for splash
                 } else {
                     MainPageView()
                         .preferredColorScheme(.dark)
+                        .buttonStyle(.glass)
                 }
             }
             .onAppear {

@@ -28,4 +28,5 @@ struct SplashScreen: View {
 #Preview {
     SplashScreen()
         .preferredColorScheme(.dark)
+        .buttonStyle(.glass)
 }

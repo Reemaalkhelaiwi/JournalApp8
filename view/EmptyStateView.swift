@@ -1,5 +1,5 @@
-import SwiftUI
 
+import SwiftUI
 struct EmptyStateScreen: View {
     @StateObject private var vm = JournalViewModel()
 
@@ -8,8 +8,8 @@ struct EmptyStateScreen: View {
     @State private var draftContent = ""
     @State private var editingIndex: Int? = nil
 
+    // 🛠 Drive the confirm dialog from this optional item
     @State private var pendingDelete: JournalEntry? = nil
-    @State private var showDeleteAlert = false
 
     private let lavender = Color(red: 0.76, green: 0.73, blue: 0.98)
     private let surface  = Color(red: 0.12, green: 0.12, blue: 0.12)
@@ -23,14 +23,16 @@ struct EmptyStateScreen: View {
                     emptyView
                 } else {
                     List {
+                        // ⬇️ delete-related area
                         ForEach(vm.items) { entry in
                             card(for: entry)
+                                .contentShape(Rectangle()) // easier swipe/tap target
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
-                                .swipeActions(edge: .trailing) {
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button(role: .destructive) {
+                                        // trigger confirm dialog
                                         pendingDelete = entry
-                                        showDeleteAlert = true
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
@@ -46,30 +48,58 @@ struct EmptyStateScreen: View {
                                 }
                                 .onTapGesture { beginEdit(entry) }
                         }
+                        // Native delete support (also works in Edit mode)
+                        .onDelete { indexSet in
+                            for index in indexSet {
+                                let id = vm.items[index].id
+                                if let i = vm.journals.firstIndex(where: { $0.id == id }) {
+                                    vm.journals.remove(at: i)
+                                }
+                            }
+                        }
                     }
                     .listStyle(.plain)
                     .animation(.default, value: vm.journals)
                     .padding(.horizontal, 4)
                     .padding(.bottom, 60)
+                    // 🔔 Attach the confirmation to the List so it shows reliably
+                    .confirmationDialog(
+                        "Delete Journal?",
+                        isPresented: Binding(
+                            get: { pendingDelete != nil },
+                            set: { if !$0 { pendingDelete = nil } }
+                        ),
+                        presenting: pendingDelete
+                    ) { entry in
+                        Button("Delete", role: .destructive) {
+                            vm.delete(entry)
+                            pendingDelete = nil
+                        }
+                        Button("Cancel", role: .cancel) {
+                            pendingDelete = nil
+                        }
+                    } message: { entry in
+                        Text("Are you sure you want to delete “\(entry.title)”?")
+                           
+                    }
+                    
                 }
             }
 
             searchBar
         }
         .preferredColorScheme(.dark)
-        .alert("Delete Journal?", isPresented: $showDeleteAlert, presenting: pendingDelete) { entry in
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) { vm.delete(entry) }
-        } message: { _ in
-            Text("Are you sure you want to delete this journal?")
-        }
+
+        // Editor sheet
         .sheet(isPresented: $showEditor) {
             FancyJournalSheet(
                 title: $draftTitle,
                 content: $draftContent,
                 onCancel: { showEditor = false },
-                onSave:  { vm.upsert(editingIndex: editingIndex, title: draftTitle, content: draftContent)
-                           showEditor = false }
+                onSave:  {
+                    vm.upsert(editingIndex: editingIndex, title: draftTitle, content: draftContent)
+                    showEditor = false
+                }
             )
             .preferredColorScheme(.dark)
             .presentationDetents([.large])
@@ -77,10 +107,11 @@ struct EmptyStateScreen: View {
         }
     }
 
+    // MARK: Header
     private var header: some View {
         HStack {
             Text("Journal")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.system(size: 45, weight: .bold, design: .default))
             Spacer()
             HStack(spacing: 12) {
                 Menu {
@@ -92,22 +123,26 @@ struct EmptyStateScreen: View {
                 Button { beginAdd() } label: { Image(systemName: "plus") }
             }
             .font(.title3)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 14)
+            .padding(.vertical,8)
+            .padding(.horizontal, 8)
             .background(.ultraThinMaterial)
             .clipShape(Capsule())
+            .buttonStyle(.glass)
         }
         .padding(.horizontal)
     }
 
+    // MARK: Empty view
     private var emptyView: some View {
         VStack {
             Spacer()
             Image("emptybook")
                 .resizable().scaledToFit()
-                .frame(width: 180, height: 100)
-            Text("Begin Your Journal").font(.title3).bold()
-            Text("Tap the + to start writing your first entry.")
+                .frame(width: 200, height: 150)
+            Text("Begin Your Journal")
+                .font(.title3).bold()
+                .foregroundColor(lavender)
+            Text("Craft your personal diary, tap the plus icon to begin")
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
@@ -115,6 +150,7 @@ struct EmptyStateScreen: View {
         }
     }
 
+    // MARK: Card
     private func card(for e: JournalEntry) -> some View {
         ZStack(alignment: .topTrailing) {
             RoundedRectangle(cornerRadius: 22).fill(surface)
@@ -131,7 +167,7 @@ struct EmptyStateScreen: View {
                 }
                 Text(e.date.formatted(date: .numeric, time: .omitted))
                     .font(.caption).foregroundColor(.secondary)
-                Text(e.content).foregroundColor(.primary.opacity(0.92))
+                Text(e.content).foregroundColor(.primary.opacity(1))
             }
             .padding(18)
         }
@@ -139,6 +175,7 @@ struct EmptyStateScreen: View {
         .contentShape(Rectangle())
     }
 
+    // MARK: Search bar
     private var searchBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundColor(.secondary)
@@ -150,12 +187,13 @@ struct EmptyStateScreen: View {
         }
         .padding(.horizontal, 14)
         .frame(height: 44)
-        .background(surface)
+        .background(.ultraThinMaterial)
         .clipShape(Capsule())
         .padding(.horizontal)
         .padding(.bottom, 16)
     }
 
+    // MARK: Editing helpers
     private func beginAdd() {
         editingIndex = nil
         draftTitle = ""
@@ -172,6 +210,7 @@ struct EmptyStateScreen: View {
         }
     }
 }
+
 #Preview {
     EmptyStateScreen()
         .preferredColorScheme(.dark)

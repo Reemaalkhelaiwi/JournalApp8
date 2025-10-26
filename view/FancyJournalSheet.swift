@@ -20,21 +20,26 @@ struct FancyJournalSheet: View {
     var body: some View {
         ZStack(alignment: .top) {
             sheetGray.opacity(opacity).ignoresSafeArea()
+                
 
             VStack(alignment: .leading, spacing: 10) {
                 VStack(spacing: 10) {
-                    Capsule().frame(width: 45, height: 5)
-                        .foregroundStyle(.secondary).opacity(0.6)
+                    Capsule().frame(width: 50, height: 6)
+                        .foregroundStyle(.secondary).opacity(0.7)
+                        .buttonStyle(.glass)
+                        
 
                     HStack {
                         Button {
                             if isUnchanged { onCancel() } else { showDiscard = true }
+                            
                         } label: {
                             ZStack {
-                                Circle().fill(Color.black.opacity(0.35))
-                                    .frame(width: 40, height: 40)
+                                Circle().fill(Color.black.opacity(0))
+                                    .frame(width: 30, height: 40)
                                 Image(systemName: "xmark")
-                                    .font(.system(size: 16, weight: .bold))
+                                    .font(.system(size: 25, weight: .bold))
+                                    
                             }
                         }
 
@@ -43,10 +48,12 @@ struct FancyJournalSheet: View {
                         Button(action: onSave) {
                             ZStack {
                                 Circle().fill(purple)
-                                    .frame(width: 40, height: 40)
+                                    .buttonStyle(.glass)
+                                    .frame(width: 50, height: 40)
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.system(size: 20, weight: .bold))
                                     .foregroundStyle(.black.opacity(0.9))
+                                      
                             }
                         }
                         .disabled(isEmpty)
@@ -63,7 +70,7 @@ struct FancyJournalSheet: View {
                         .focused($focus, equals: .title)
                         .textInputAutocapitalization(.sentences)
                         .submitLabel(.next)
-                        .onSubmit { focus = .body }
+                        
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 6)
@@ -126,4 +133,6 @@ struct FancyJournalSheet: View {
         onSave: {}
     )
     .preferredColorScheme(.dark)
+    .buttonStyle(.glass)
+
 }
