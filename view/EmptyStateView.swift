@@ -1,6 +1,6 @@
 
 import SwiftUI
-struct EmptyStateScreen: View {
+struct EmptyStateView: View   {
     @StateObject private var vm = JournalViewModel()
 
     @State private var showEditor = false
@@ -212,6 +212,6 @@ struct EmptyStateScreen: View {
 }
 
 #Preview {
-    EmptyStateScreen()
+    EmptyStateView()
         .preferredColorScheme(.dark)
 }

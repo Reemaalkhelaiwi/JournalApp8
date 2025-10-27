@@ -26,7 +26,7 @@ struct FancyJournalSheet: View {
                 VStack(spacing: 10) {
                     Capsule().frame(width: 50, height: 6)
                         .foregroundStyle(.secondary).opacity(0.7)
-                        .buttonStyle(.glass)
+                       // .buttonStyle(.glass)
                         
 
                     HStack {
@@ -48,7 +48,7 @@ struct FancyJournalSheet: View {
                         Button(action: onSave) {
                             ZStack {
                                 Circle().fill(purple)
-                                    .buttonStyle(.glass)
+                                    //.buttonStyle(.glass)
                                     .frame(width: 50, height: 40)
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 20, weight: .bold))
@@ -133,6 +133,6 @@ struct FancyJournalSheet: View {
         onSave: {}
     )
     .preferredColorScheme(.dark)
-    .buttonStyle(.glass)
+   // .buttonStyle(.glass)
 
 }

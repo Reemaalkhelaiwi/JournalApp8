@@ -7,6 +7,7 @@ final class JournalViewModel: ObservableObject {
     @Published var journals: [JournalEntry] = []
     @Published var searchText: String = ""
     @Published var filter: Filter = .all
+    @Published  var showDeleteAlert = false
 
     enum Filter { case all, bookmarked, newest }
 
@@ -50,5 +51,19 @@ final class JournalViewModel: ObservableObject {
         if let i = journals.firstIndex(of: entry) {
             journals[i].isBookmarked.toggle()
         }
+    }
+    // Add this inside your JournalViewModel class
+    private var pendingDelete: JournalEntry?
+
+    func requestDelete(_ entry: JournalEntry) {
+        pendingDelete = entry
+    }
+
+    func confirmDelete() {
+        guard let entry = pendingDelete else { return }
+        if let i = journals.firstIndex(of: entry) {
+            journals.remove(at: i)
+        }
+        pendingDelete = nil
     }
 }
